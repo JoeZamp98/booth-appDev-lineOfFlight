@@ -110,3 +110,9 @@ class PirateWeatherFetcher:
             self._cache_set(cache_key, result)
 
         return result
+
+
+
+    ## -- Helpers -- ##
+
+    
