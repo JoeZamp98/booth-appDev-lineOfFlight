@@ -57,7 +57,7 @@ AIRPORTS = {
 
 class PirateWeatherFetcher: 
 
-    BASE_URL = "https://api.pirateweather.net/forecast"
+    BASE_URL = "https://timemachine.pirateweather.net/forecast"
 
     def __init__(self, api_key: str, cache_path: str = "weather_cache.db", rate_limit_delay: float = 0.25):
         """
@@ -105,14 +105,114 @@ class PirateWeatherFetcher:
         if not data:
             return None
 
-        result = data._parse_hourly(data, hour_ts)
+        result = self._parse_hourly(data, hour_ts)
+
         if result:
             self._cache_set(cache_key, result)
 
         return result
 
-
-
     ## -- Helpers -- ##
-
     
+
+    def _init_cache(self, path: str):
+        self._conn = sqlite3.connect(path)
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS weather_cache(
+                key TEXT PRIMARY KEY,
+                data TEXT NOT NULL,
+                ts INTEGER NOT NULL
+            )
+        """)
+
+        self._conn.commit()
+        log.info(f"Cache initialized at {path}")
+
+    def _cache_get(
+        self,
+        key: str
+    ) -> dict | None:
+        import json
+        row = self._conn.execute(
+            """
+                SELECT data FROM weather_cache WHERE key = ?
+            """, (key,)).fetchone()
+
+        if row: 
+            return json.loads(row[0])
+        
+        return None
+    
+    def _cache_set(self, key: str, data: dict) -> None:
+        import json
+        self._conn.execute(
+            "INSERT OR REPLACE INTO weather_cache (key, data, ts) VALUES (?, ?, ?)",
+            (key, json.dumps(data), int(time.time())),
+        )
+        self._conn.commit()
+
+    def _fetch(
+        self, 
+        url: str,
+        params: dict
+    ) -> dict | None:
+
+        time.sleep(self.rate_limit_delay)
+
+        try: 
+            resp = requests.get(url, params=params, timeout=15)
+
+            resp.raise_for_status()
+
+            return resp.json()
+
+        except requests.exceptions.HTTPError as e:
+            log.error(f"HTTP error: {e} — URL: {url}")
+        except requests.exceptions.Timeout:
+            log.error(f"Timeout fetching: {url}")
+        except Exception as e:
+            log.error(f"Unexpected error: {e}")
+        return None  
+
+    def _parse_hourly(
+        self,
+        data: dict,
+        target_ts: int
+    ) -> dict | None:
+        """
+            Extract the hourly record closest to the target timestamp for a Pirate Weather API response.
+        """
+
+        hours = data.get("hourly", {}).get("data", [])
+
+        if not hours: 
+            
+            curr = data.get("currently", {})
+
+            # if curr:
+            #     return self._extract_fields(curr)
+            
+            return None
+
+        closest = min(hours, key=lambda h: abs(h.get("time", 0) - target_ts))
+
+        return closest
+
+if __name__ == "__main__":
+
+    import os
+    from dotenv import load_dotenv
+
+    load_dotenv('.env')
+
+    API_KEY = os.environ.get("PIRATE_WEATHER_API_KEY", None)
+
+    fetcher = PirateWeatherFetcher(API_KEY)
+
+    ## -- Single Historical Lookup -- ##
+    print("\n--- TEST: Historical lookup: SFO, June 15 2024 17:00 local ---")
+
+    wx = fetcher.get_historical_data("SFO", datetime(2024, 6, 15, 17, 0))
+
+    print(wx)
+
