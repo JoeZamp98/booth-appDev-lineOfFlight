@@ -1,6 +1,9 @@
 class PredictionService
   include HTTParty
-  base_uri "http://localhost:8000"
+
+  def self.base_uri
+    ENV.fetch("FASTAPI_URL", "http://localhost:8000")
+  end
 
   def self.predict(
     carrier:,

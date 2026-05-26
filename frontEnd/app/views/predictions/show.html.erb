@@ -69,22 +69,9 @@
       <div class="flex items-center gap-6">
 
         <%# Gauge — React will mount here, SVG is the fallback %>
-        <div id="delay-gauge" data-prob="<%= p[:delay_prob] %>" class="w-36 shrink-0">
-          <%
-            prob  = p[:delay_prob]
-            color = delay_color(prob)
-            sweep = 60 + (prob * 120)   # arc endpoint x, 60..180
-          %>
-          <svg viewBox="0 0 140 85" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 75 A55 55 0 0 1 125 75"
-                  stroke="#F0ECE8" stroke-width="10" fill="none" stroke-linecap="round"/>
-            <path d="M15 75 A55 55 0 0 1 <%= sweep %> <%= sweep < 70 ? 75 - (70-sweep)*0.6 : 75 - (sweep-70)*0.6 %>"
-                  stroke="<%= color %>" stroke-width="10" fill="none" stroke-linecap="round"/>
-            <text x="70" y="68" text-anchor="middle" font-size="18" font-weight="300"
-                  fill="<%= color %>"><%= fmt_pct(prob) %></text>
-            <text x="70" y="80" text-anchor="middle" font-size="7"
-                  fill="#aaa">DELAY PROBABILITY</text>
-          </svg>
+        <div id="delay-gauge" 
+          data-prob="<%= p[:delay_prob] %>"
+          class="w-40 h-24 shrink-0">
         </div>
 
         <div>

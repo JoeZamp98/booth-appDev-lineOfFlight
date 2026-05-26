@@ -10,7 +10,7 @@ DUMMY_PREDICTIONS = {
         "aircraft":     "Airbus A330-900neo",
         "seat":         "2A",
         "status":       "On time",
-        "delay_prob":   0.64,
+        "delay_prob":   0.45,
         "likely_delay": 42,
         "drivers": [
             {

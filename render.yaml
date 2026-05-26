@@ -1,0 +1,42 @@
+# render.yaml (repo root)
+services:
+
+  # ── Rails frontend ──────────────────────────────────────
+  - type: web
+    name: lof-frontend
+    runtime: ruby
+    rootDir: frontEnd
+    buildCommand: |
+      bundle install
+      bundle exec rails assets:precompile
+      bin/vite build
+    startCommand: bundle exec rails server -p $PORT -e production
+    envVars:
+      - key: RAILS_ENV
+        value: production
+      - key: RAILS_MASTER_KEY
+        sync: false       
+      - key: FASTAPI_URL
+        value: https://lof-api.onrender.com
+      - key: RAILS_SERVE_STATIC_FILES
+        value: "true"
+      - key: WEB_CONCURRENCY
+        value: "1"
+
+  # ── FastAPI service ──────────────────────────────────────
+  - type: web
+    name: lof-api
+    runtime: python
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+
+  # ── PostgreSQL ───────────────────────────────────────────
+databases:
+  - name: lof-db
+    databaseName: lof
+    user: lof
+    plan: free

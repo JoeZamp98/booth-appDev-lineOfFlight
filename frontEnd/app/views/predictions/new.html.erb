@@ -22,40 +22,78 @@
       </p>
     </div>
 
-    <%# Origin / Dest (static for now) %>
-    <div class="flex flex-col gap-3">
-      <div>
-        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">Origin</p>
-        <div class="flex items-center gap-2 border border-[#E0DCD5] rounded-lg px-4 py-3 bg-white">
-          <span class="text-lg font-semibold w-10"><%= @origin %></span>
-          <span class="text-sm text-[#888]">
-            <%= DummyData::AIRPORTS[@origin]&.dig(:name) %>
-          </span>
-        </div>
-      </div>
+    <%# Origin / Dest form %>
+    <%= form_with url: new_prediction_path, method: :get, 
+      data: { turbo: false }, class: "flex flex-col gap-3" do |f| %>
 
-      <div class="text-center text-[#ccc] text-xl select-none">⇅</div>
-
-      <div>
-        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">Destination</p>
-        <div class="flex items-center gap-2 border border-[#E0DCD5] rounded-lg px-4 py-3 bg-white">
-          <span class="text-lg font-semibold w-10"><%= @dest %></span>
-          <span class="text-sm text-[#888]">
-            <%= DummyData::AIRPORTS[@dest]&.dig(:name) %>
-          </span>
-        </div>
-      </div>
-
-      <div>
-        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">
-          Date of Flight
-        </p>
-        <div class="flex items-center gap-2 border border-[#E0DCD5] rounded-lg px-4 py-3 bg-white">
-          <span class="text-lg font-semibold"><%= Date.today.strftime("%-B %-d") %></span>
-          <span class="text-sm text-[#888]"><%= Date.today.strftime("· %Y · %A") %></span>
-        </div>
+    <div>
+    <label class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1 block">
+      Origin
+    </label>
+    <div class="relative">
+      <%= f.select :origin,
+            DummyData::AIRPORTS.map { |code, info| [info[:name], code] },
+            { selected: @origin },
+            class: "w-full appearance-none border border-[#E0DCD5] rounded-lg
+                    px-4 py-3 bg-white text-base font-medium
+                    focus:outline-none focus:border-[#1a1a1a] transition-colors
+                    cursor-pointer" %>
+      <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 4L6 8L10 4" stroke="#888" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </div>
     </div>
+    </div>
+
+    <%# Swap button %>
+    <div class="flex justify-center">
+    <button type="button" id="swap-airports"
+            class="text-[#ccc] hover:text-[#888] transition-colors text-xl
+                  select-none cursor-pointer px-4 py-1">
+      ⇅
+    </button>
+    </div>
+
+    <div>
+    <label class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1 block">
+      Destination
+    </label>
+    <div class="relative">
+      <%= f.select :dest,
+            DummyData::AIRPORTS.map { |code, info| [info[:name], code] },
+            { selected: @dest },
+            class: "w-full appearance-none border border-[#E0DCD5] rounded-lg
+                    px-4 py-3 bg-white text-base font-medium
+                    focus:outline-none focus:border-[#1a1a1a] transition-colors
+                    cursor-pointer" %>
+      <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 4L6 8L10 4" stroke="#888" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+    </div>
+
+    <div>
+    <label class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1 block">
+      Date of Flight
+    </label>
+    <div class="border border-[#E0DCD5] rounded-lg px-4 py-3 bg-white">
+      <span class="text-base font-medium"><%= Date.today.strftime("%-B %-d") %></span>
+      <span class="text-sm text-[#888]"><%= Date.today.strftime("· %Y · %A") %></span>
+    </div>
+    </div>
+
+    <%= f.submit "Search flights",
+        class: "w-full bg-[#1a1a1a] text-white text-sm font-medium
+                py-3 rounded-lg hover:bg-[#333] transition-colors
+                cursor-pointer mt-1" %>
+
+    <% end %>
+
 
     <%# Flight list %>
     <div>
@@ -96,12 +134,19 @@
     <%# Weather banner %>
     <div class="rounded-xl bg-[#1a2535] text-white p-5">
       <p class="text-xs text-white/40 tracking-widest uppercase mb-3">
-        · <%= @origin %> · current conditions
+        <%= @origin %> · current conditions
+        <% if @weather[:source] == :dummy %>
+          <span class="ml-2 text-white/30">(cached)</span>
+        <% end %>
       </p>
       <div class="flex items-end justify-between">
         <div>
           <p class="text-2xl font-light">
             <%= @weather[:temp_f] %>°F · <%= @weather[:condition] %>
+          </p>
+          <p class="text-xs text-white/40 mt-1">
+            precip <%= ((@weather[:precip] || 0) * 100).round %>% ·
+            cloud cover <%= ((@weather[:cloud] || 0) * 100).round %>%
           </p>
         </div>
         <div class="text-right text-xs text-white/50">
@@ -118,16 +163,10 @@
       </p>
 
       <%# SVG arc %>
-      <svg viewBox="0 0 560 130" class="w-full mb-4" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="60"  cy="95" r="4" fill="#1a1a1a"/>
-        <circle cx="500" cy="95" r="4" fill="#1a1a1a"/>
-        <path d="M60 95 Q280 15 500 95"
-              stroke="#c8902a" stroke-width="1.5" stroke-dasharray="5,4"
-              fill="none"/>
-        <text x="275" y="38" font-size="14" fill="#1a1a1a" text-anchor="middle">✈</text>
-        <text x="60"  y="112" font-size="10" fill="#888" text-anchor="middle"><%= @origin %></text>
-        <text x="500" y="112" font-size="10" fill="#888" text-anchor="middle"><%= @dest %></text>
-      </svg>
+      <div id="route-arc"
+          data-origin="<%= @origin %>"
+          data-dest="<%= @dest %>">
+      </div>
 
       <div class="grid grid-cols-4 gap-4 pt-4 border-t border-[#F0ECE8]">
         <div>

@@ -67,3 +67,5 @@ end
 
 gem "tailwindcss-rails", "~> 4.4"
 gem "httparty"
+gem "vite_rails"
+gem "pg"

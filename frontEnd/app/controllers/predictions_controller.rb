@@ -3,7 +3,12 @@ class PredictionsController < ApplicationController
     @origin       = params[:origin]&.upcase || "SFO"
     @dest         = params[:dest]&.upcase   || "JFK"
     @flights      = DummyData.flights_for_route(@origin, @dest)
-    @weather      = { temp_f: 62, condition: "Scattered clouds", wind: "12 kt", vis: "10 mi" }
+
+    Rails.logger.info "Fetching weather for #{@origin}..."
+    @weather = WeatherService.current(@origin)
+    Rails.logger.info "Weather source: #{@weather[:source]}"
+    
+    
     @recent_trips = DummyData::RECENT_TRIPS
 
     #Attempts to retrieve data from FastAPI service first, falls back to dummy data otherwise

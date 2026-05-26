@@ -13,6 +13,7 @@ module FrontEnd
     config.autoload_paths << Rails.root.join("app/data")
     config.autoload_paths << Rails.root.join("app/data")
     config.autoload_paths << Rails.root.join("app/services")
+    config.api_only = false
 
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
