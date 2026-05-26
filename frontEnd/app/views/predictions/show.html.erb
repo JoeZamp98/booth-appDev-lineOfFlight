@@ -1,0 +1,140 @@
+<% p = @prediction %>
+<% content_for :title, "#{p[:flight]} · #{p[:origin]} → #{p[:dest]}" %>
+<% content_for :breadcrumb do %>
+  <%= link_to "Predict", new_prediction_path, class: "hover:text-[#1a1a1a]" %>
+  <span class="mx-1.5">›</span>
+  <%= link_to "Watchlist", watchlist_path, class: "hover:text-[#1a1a1a]" %>
+  <span class="mx-1.5">›</span>
+  <span class="text-[#1a1a1a]">
+    <%= p[:flight] %> · <%= p[:origin] %> → <%= p[:dest] %>
+  </span>
+<% end %>
+
+<div class="flex flex-col gap-5">
+
+  <%# ── Flight header ── %>
+  <div class="bg-white rounded-xl border border-[#E0DCD5] p-6">
+    <div class="flex items-start gap-10">
+
+      <div class="flex-1">
+        <p class="text-xs font-semibold tracking-widest text-[#c0392b] uppercase mb-2">
+          <%= DummyData::AIRLINES[p[:carrier]] %> · <%= p[:flight] %>
+        </p>
+        <div class="flex items-center gap-3">
+          <span class="text-5xl font-light tracking-tight"><%= p[:origin] %></span>
+          <span class="text-2xl text-[#ccc]">→</span>
+          <span class="text-5xl font-light tracking-tight"><%= p[:dest] %></span>
+        </div>
+        <p class="text-sm text-[#888] mt-1">
+          <%= p[:aircraft] %> · seat <%= p[:seat] %> · <%= p[:duration] rescue "5h 32m scheduled" %>
+        </p>
+      </div>
+
+      <div class="text-center">
+        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">Depart</p>
+        <p class="text-2xl font-light tabular-nums"><%= p[:dep_time] %></p>
+      </div>
+
+      <div class="text-center">
+        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">Arrive</p>
+        <p class="text-2xl font-light tabular-nums">
+          <%= p[:arr_time] %>
+          <% if p[:arr_plus_day] %>
+            <sup class="text-sm text-[#888]">+1</sup>
+          <% end %>
+        </p>
+      </div>
+
+      <div class="text-center">
+        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">Status</p>
+        <p class="text-2xl font-light text-[#4a8c5c]">
+          <span class="inline-block w-2 h-2 rounded-full bg-current mr-1 mb-0.5"></span>
+          <%= p[:status] %>
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <%# ── Prediction + Drivers ── %>
+  <div class="grid grid-cols-2 gap-5">
+
+    <%# Prediction card %>
+    <div class="bg-white rounded-xl border border-[#E0DCD5] p-6">
+      <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">
+        Our Prediction
+      </p>
+      <h2 class="text-xl font-light mb-5">Delays possible</h2>
+
+      <div class="flex items-center gap-6">
+
+        <%# Gauge — React will mount here, SVG is the fallback %>
+        <div id="delay-gauge" data-prob="<%= p[:delay_prob] %>" class="w-36 shrink-0">
+          <%
+            prob  = p[:delay_prob]
+            color = delay_color(prob)
+            sweep = 60 + (prob * 120)   # arc endpoint x, 60..180
+          %>
+          <svg viewBox="0 0 140 85" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 75 A55 55 0 0 1 125 75"
+                  stroke="#F0ECE8" stroke-width="10" fill="none" stroke-linecap="round"/>
+            <path d="M15 75 A55 55 0 0 1 <%= sweep %> <%= sweep < 70 ? 75 - (70-sweep)*0.6 : 75 - (sweep-70)*0.6 %>"
+                  stroke="<%= color %>" stroke-width="10" fill="none" stroke-linecap="round"/>
+            <text x="70" y="68" text-anchor="middle" font-size="18" font-weight="300"
+                  fill="<%= color %>"><%= fmt_pct(prob) %></text>
+            <text x="70" y="80" text-anchor="middle" font-size="7"
+                  fill="#aaa">DELAY PROBABILITY</text>
+          </svg>
+        </div>
+
+        <div>
+          <p class="text-3xl font-light leading-snug">
+            <span style="color:<%= delay_color(p[:delay_prob]) %>" class="font-normal">
+              <%= fmt_pct(p[:delay_prob]) %>
+            </span>
+            chance of a<br>30+ min delay
+          </p>
+          <p class="text-xs text-[#888] mt-2 leading-relaxed">
+            Most-likely delay is <strong><%= p[:likely_delay] %> min</strong>.
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <%# Delay drivers %>
+    <div class="bg-white rounded-xl border border-[#E0DCD5] p-6">
+      <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">
+        Delay Drivers
+      </p>
+      <h2 class="text-xl font-light mb-4">What's pushing this up</h2>
+
+      <div class="flex flex-col gap-4">
+        <% p[:drivers].each do |d| %>
+          <%
+            bar_color = case d[:severity]
+              when :high     then "#c0392b"
+              when :medium   then "#c8902a"
+              when :positive then "#4a8c5c"
+              else                "#888"
+            end
+          %>
+          <div class="flex gap-3">
+            <div class="w-1 rounded-full shrink-0"
+                 style="background:<%= bar_color %>; min-height:36px"></div>
+            <div class="flex-1">
+              <div class="flex items-baseline justify-between">
+                <p class="text-sm font-medium"><%= d[:label] %></p>
+                <p class="text-sm font-semibold tabular-nums ml-2"
+                   style="color:<%= bar_color %>"><%= d[:delta] %></p>
+              </div>
+              <p class="text-xs text-[#888] leading-relaxed mt-0.5"><%= d[:detail] %></p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+  </div>
+
+</div>
