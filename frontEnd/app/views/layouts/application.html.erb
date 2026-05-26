@@ -1,29 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title><%= content_for(:title) || "Front End" %></title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Front End">
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+      <%= content_for?(:title) ? yield(:title) + " · " : "" %>Line of Flight
+    </title>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-
-    <%= yield :head %>
-
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
-
-    <link rel="icon" href="/icon.png" type="image/png">
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.png">
-
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
 
-  <body>
-    <%= yield %>
+  <body class="bg-[#F5F2ED] text-[#1a1a1a] min-h-screen antialiased">
+
+    <%# ── Top nav ── %>
+    <header class="border-b border-[#E0DCD5] bg-[#F5F2ED]/95 backdrop-blur-sm sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-6 h-14 flex items-center gap-8">
+
+        <%# Logo %>
+        <a href="/" class="flex items-center gap-2.5 shrink-0">
+          <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+            <circle cx="14" cy="14" r="13" stroke="#1a1a1a" stroke-width="1.5"/>
+            <path d="M7 17 L14 8 L21 17" stroke="#1a1a1a" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <path d="M10 17 L18 17" stroke="#1a1a1a" stroke-width="1" stroke-linecap="round"/>
+          </svg>
+          <span class="text-sm font-semibold tracking-widest uppercase">Line of Flight</span>
+        </a>
+
+        <%# Nav links %>
+        <nav class="flex items-center gap-1 ml-2">
+          <%= nav_link "Predict",   new_prediction_path %>
+          <%= nav_link "Trips",     trips_path %>
+          <%= nav_link "Watchlist", watchlist_path %>
+          <%# <%= nav_link "Patterns",  patterns_path %>
+        </nav>
+
+        <%# User badge %>
+        <div class="ml-auto flex items-center gap-3">
+          <span class="text-sm text-[#888]">Daniel · Diamond Medallion</span>
+          <div class="w-8 h-8 rounded-full bg-[#1a1a1a] text-white text-xs font-semibold
+                      flex items-center justify-center">
+            DP
+          </div>
+        </div>
+
+      </div>
+    </header>
+
+    <%# ── Breadcrumb ── %>
+    <% if content_for?(:breadcrumb) %>
+      <div class="border-b border-[#E0DCD5]">
+        <div class="max-w-7xl mx-auto px-6 h-10 flex items-center justify-between
+                    text-xs text-[#888]">
+          <div><%= yield :breadcrumb %></div>
+          <div class="tabular-nums">updated · <%= Time.now.strftime("%H:%M:%S") %> PDT</div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# ── Page content ── %>
+    <main class="max-w-7xl mx-auto px-6 py-8">
+      <%= yield %>
+    </main>
+
   </body>
 </html>

@@ -1,0 +1,177 @@
+<% content_for :title, "Predict" %>
+<% content_for :breadcrumb do %>
+  <%= link_to "Predict", new_prediction_path, class: "hover:text-[#1a1a1a]" %>
+  <span class="mx-1.5">›</span>
+  <span class="text-[#1a1a1a]">New search</span>
+<% end %>
+
+<div class="flex gap-8">
+
+  <%# ── LEFT: Search + flight list ── %>
+  <div class="w-[400px] shrink-0 flex flex-col gap-6">
+
+    <%# Header %>
+    <div>
+      <p class="text-xs font-semibold tracking-widest text-[#c0392b] uppercase mb-1">
+        New Prediction
+      </p>
+      <h1 class="text-3xl font-light tracking-tight">Will it leave on time?</h1>
+      <p class="mt-2 text-sm text-[#666] leading-relaxed">
+        Tell us about your itinerary. We'll cross-reference five years of route data,
+        weather, equipment patterns, and current ground-stop activity.
+      </p>
+    </div>
+
+    <%# Origin / Dest (static for now) %>
+    <div class="flex flex-col gap-3">
+      <div>
+        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">Origin</p>
+        <div class="flex items-center gap-2 border border-[#E0DCD5] rounded-lg px-4 py-3 bg-white">
+          <span class="text-lg font-semibold w-10"><%= @origin %></span>
+          <span class="text-sm text-[#888]">
+            <%= DummyData::AIRPORTS[@origin]&.dig(:name) %>
+          </span>
+        </div>
+      </div>
+
+      <div class="text-center text-[#ccc] text-xl select-none">⇅</div>
+
+      <div>
+        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">Destination</p>
+        <div class="flex items-center gap-2 border border-[#E0DCD5] rounded-lg px-4 py-3 bg-white">
+          <span class="text-lg font-semibold w-10"><%= @dest %></span>
+          <span class="text-sm text-[#888]">
+            <%= DummyData::AIRPORTS[@dest]&.dig(:name) %>
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">
+          Date of Flight
+        </p>
+        <div class="flex items-center gap-2 border border-[#E0DCD5] rounded-lg px-4 py-3 bg-white">
+          <span class="text-lg font-semibold"><%= Date.today.strftime("%-B %-d") %></span>
+          <span class="text-sm text-[#888]"><%= Date.today.strftime("· %Y · %A") %></span>
+        </div>
+      </div>
+    </div>
+
+    <%# Flight list %>
+    <div>
+      <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-2">
+        Select your flight — <%= @flights.size %> options
+      </p>
+      <div class="flex flex-col gap-2">
+        <% @flights.each do |fl| %>
+          <%
+            prob  = fl[:delay_prob]
+            color = delay_color(prob)
+          %>
+          <%= link_to prediction_path("#{fl[:carrier]}-#{fl[:flight].split(' ').last}"),
+                class: "flex items-center gap-3 px-4 py-3 rounded-lg border
+                        border-[#E0DCD5] bg-white hover:border-[#aaa] transition-all" do %>
+
+            <span class="text-sm font-medium w-14 tabular-nums shrink-0"><%= fl[:dep] %></span>
+            <span class="text-sm text-[#555] flex-1">
+              <%= DummyData::AIRLINES[fl[:carrier]] %> <%= fl[:flight].split(' ').last %>
+            </span>
+            <span class="text-xs text-[#aaa]"><%= fl[:aircraft] %></span>
+            <span class="text-xs font-semibold tabular-nums px-2 py-0.5 rounded border"
+                  style="color:<%= color %>; border-color:<%= color %>20; background:<%= color %>10">
+              <%= fmt_pct(prob) %>
+            </span>
+            <span class="text-xs text-[#aaa]">select →</span>
+
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+  </div>
+
+  <%# ── RIGHT: Weather + route stats + recent trips ── %>
+  <div class="flex-1 flex flex-col gap-4">
+
+    <%# Weather banner %>
+    <div class="rounded-xl bg-[#1a2535] text-white p-5">
+      <p class="text-xs text-white/40 tracking-widest uppercase mb-3">
+        · <%= @origin %> · current conditions
+      </p>
+      <div class="flex items-end justify-between">
+        <div>
+          <p class="text-2xl font-light">
+            <%= @weather[:temp_f] %>°F · <%= @weather[:condition] %>
+          </p>
+        </div>
+        <div class="text-right text-xs text-white/50">
+          <p>wind <%= @weather[:wind] %></p>
+          <p>vis <%= @weather[:vis] %></p>
+        </div>
+      </div>
+    </div>
+
+    <%# Route stats %>
+    <div class="bg-white rounded-xl border border-[#E0DCD5] p-5">
+      <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-4">
+        Route Overview · <%= @origin %> → <%= @dest %>
+      </p>
+
+      <%# SVG arc %>
+      <svg viewBox="0 0 560 130" class="w-full mb-4" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60"  cy="95" r="4" fill="#1a1a1a"/>
+        <circle cx="500" cy="95" r="4" fill="#1a1a1a"/>
+        <path d="M60 95 Q280 15 500 95"
+              stroke="#c8902a" stroke-width="1.5" stroke-dasharray="5,4"
+              fill="none"/>
+        <text x="275" y="38" font-size="14" fill="#1a1a1a" text-anchor="middle">✈</text>
+        <text x="60"  y="112" font-size="10" fill="#888" text-anchor="middle"><%= @origin %></text>
+        <text x="500" y="112" font-size="10" fill="#888" text-anchor="middle"><%= @dest %></text>
+      </svg>
+
+      <div class="grid grid-cols-4 gap-4 pt-4 border-t border-[#F0ECE8]">
+        <div>
+          <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">On-Time Rate</p>
+          <p class="text-2xl font-light">71%</p>
+          <p class="text-xs text-[#aaa]">last 30 days</p>
+        </div>
+        <div>
+          <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">Median Delay</p>
+          <p class="text-2xl font-light">14 min</p>
+        </div>
+        <div>
+          <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">Cancel Rate</p>
+          <p class="text-2xl font-light">2.1%</p>
+          <p class="text-xs text-[#aaa]">below avg</p>
+        </div>
+        <div>
+          <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">Weather Watch</p>
+          <p class="text-2xl font-light text-[#4a8c5c]">LOW</p>
+          <p class="text-xs text-[#aaa]">ZNY airspace</p>
+        </div>
+      </div>
+    </div>
+
+    <%# Recent trips %>
+    <div class="bg-white rounded-xl border border-[#E0DCD5] p-5">
+      <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-3">
+        Your Recent Trips
+      </p>
+      <div class="grid grid-cols-4 gap-3">
+        <% @recent_trips.each do |trip| %>
+          <div class="rounded-lg border border-[#E0DCD5] p-3">
+            <p class="text-xs text-[#888] mb-1"><%= trip[:date] %></p>
+            <p class="text-sm font-semibold"><%= trip[:origin] %> → <%= trip[:dest] %></p>
+            <p class="text-xs mt-1 font-medium"
+               style="color:<%= trip[:delay_class] == 'early' ? '#4a8c5c' :
+                               trip[:delay_class] == 'late'  ? '#c0392b' : '#888' %>">
+              <%= trip[:delay_min] >= 0 ? "+#{trip[:delay_min]}m" : "#{trip[:delay_min]}m" %>
+            </p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+  </div>
+
+</div>
