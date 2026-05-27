@@ -21,30 +21,30 @@ class WeatherService
     def self.current(airport)
       coords = AIRPORTS[airport]
       return fallback(airport) unless coords
-
+    
       key = api_key
-      Rails.logger.info "Weather API key present: #{key.present?}, value: #{key.inspect}"
       return fallback(airport) if key.nil? || key.empty?
-
-      api_key  = Rails.application.credentials.pirate_weather[:api_key]
-      lat, lon = coords[:lat], coords[:lon]
-  
-      response = get(
-        "/forecast/#{api_key}/#{lat},#{lon}",
-        query: { units: "us", exclude: "minutely,hourly,daily,alerts" }
-      )
-  
-      if response.success?
-        parse(response.parsed_response, airport)
-      else
+    
+      url = "/forecast/#{key}/#{coords[:lat]},#{coords[:lon]}"
+      Rails.logger.info "Calling Pirate Weather: #{self.base_uri}#{url}"
+    
+      begin
+        response = get(url, query: { units: "us", exclude: "minutely,hourly,daily,alerts" })
+        Rails.logger.info "Pirate Weather response: #{response.code}"
+    
+        if response.success?
+          parse(response.parsed_response, airport)
+        else
+          Rails.logger.error "Pirate Weather failed: #{response.code} #{response.body}"
+          fallback(airport)
+        end
+    
+      rescue => e
+        Rails.logger.error "WeatherService exception: #{e.class} #{e.message}"
         fallback(airport)
       end
-  
-    rescue HTTParty::Error, SocketError => e
-      Rails.logger.error "WeatherService error: #{e.message}"
-      fallback(airport)
     end
-  
+    
     private
   
     def self.parse(data, airport)
