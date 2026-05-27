@@ -19,17 +19,16 @@ class PredictionsController < ApplicationController
 
   def show
     carrier, number = params[:id].split("-")
-
+  
     api_prediction = PredictionService.predict(
-      carrier: carrier,
+      carrier:       carrier,
       flight_number: number,
-      origin: params[:origin] || "SFO",
-      dest: params[:dest] || "JFK",
-      date: Date.today.to_s
+      origin:        params[:origin] || "SFO",
+      dest:          params[:dest]   || "JFK",
+      date:          Date.today.to_s
     )
-
+  
     @prediction = api_prediction || DummyData.prediction_for(carrier, number)
-    @source = api_prediction ? :api : :dummy
-
+    @source     = api_prediction ? :api : :dummy
   end
 end
