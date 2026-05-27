@@ -2,3 +2,8 @@ fastapi
 uvicorn
 pydantic
 requests
+lightgbm
+pandas
+numpy
+scikit-learn
+python-dotenv
