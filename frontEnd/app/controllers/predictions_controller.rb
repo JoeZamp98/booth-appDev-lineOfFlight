@@ -19,13 +19,23 @@ class PredictionsController < ApplicationController
 
   def show
     carrier, number = params[:id].split("-")
+    dep_hour = params[:dep_hour]&.to_i || 12
+  
+    # Fetch weather for both airports
+    origin     = params[:origin] || "SFO"
+    dest       = params[:dest]   || "JFK"
+    origin_wx  = WeatherService.current(origin)
+    dest_wx    = WeatherService.current(dest)
   
     api_prediction = PredictionService.predict(
-      carrier:       carrier,
-      flight_number: number,
-      origin:        params[:origin] || "SFO",
-      dest:          params[:dest]   || "JFK",
-      date:          Date.today.to_s
+      carrier:        carrier,
+      flight_number:  number,
+      origin:         origin,
+      dest:           dest,
+      date:           Date.today.to_s,
+      dep_hour:       dep_hour,
+      origin_weather: origin_wx,
+      dest_weather:   dest_wx
     )
   
     @prediction = api_prediction || DummyData.prediction_for(carrier, number)

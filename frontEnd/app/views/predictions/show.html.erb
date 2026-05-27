@@ -100,9 +100,9 @@
         <% p[:drivers].each do |d| %>
           <%
             bar_color = case d[:severity]
-              when :high     then "#c0392b"
-              when :medium   then "#c8902a"
-              when :positive then "#4a8c5c"
+              when "high"     then "#c0392b"
+              when "medium"   then "#c8902a"
+              when "positive" then "#4a8c5c"
               else                "#888"
             end
           %>
