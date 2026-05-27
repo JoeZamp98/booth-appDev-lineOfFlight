@@ -1,6 +1,6 @@
 class WeatherService
     include HTTParty
-    
+
     def self.base_uri
       ENV.fetch("PIRATE_WEATHER_URL", "https://api.pirateweather.net")
     end
@@ -21,6 +21,7 @@ class WeatherService
     def self.current(airport)
       coords = AIRPORTS[airport]
       return fallback(airport) unless coords
+      return fallback(airport) unless api_key.present?  # add this
   
       api_key  = Rails.application.credentials.pirate_weather[:api_key]
       lat, lon = coords[:lat], coords[:lon]
