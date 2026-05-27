@@ -78,7 +78,8 @@ class PirateWeatherFetcher:
         if dt.tzinfo is None:
             local_tz = ZoneInfo(info["tz"])
             dt = dt.replace(tzinfo=local_tz)
-            unix_ts = int(dt.astimezone(timezone.utc).timestamp())
+
+        unix_ts = int(dt.astimezone(timezone.utc).timestamp())
 
         # Round to the nearest hour for cache key
         hour_ts = (unix_ts // 3600) * 3600
@@ -176,27 +177,25 @@ class PirateWeatherFetcher:
         combos = set()
 
         for _, row in df.iterrows():
-
             try:
-
                 date_str = str(row[date_col]).split()[0]
 
-                dep_hour = row[dep_time_col].zfill(4)[:2]
-                arr_hour = row[arr_time_col].zfill(4)[:2]
+                # Convert integer time to zero-padded string before slicing
+                dep_hour = str(int(row[dep_time_col])).zfill(4)[:2]
+                arr_hour = str(int(row[arr_time_col])).zfill(4)[:2]
 
                 orig = row[origin_col]
                 dest = row[dest_col]
 
-                if orig in airports: 
+                if orig in airports:
                     combos.add((orig, date_str, dep_hour))
 
                 if dest in airports:
                     combos.add((dest, date_str, arr_hour))
 
-            except Exception:
-
+            except Exception as e:
+                log.warning(f"Skipping row: {e}")
                 continue
-
         log.info(f"Found {len(combos):,} unique (airport, date, hour) combos")
 
         records = []
@@ -209,7 +208,7 @@ class PirateWeatherFetcher:
 
             try: 
 
-                dt = datetime.strptime(f"{date_str} {hour:02d}:00", "%m/%d/%Y %H:%M")
+                dt = datetime.strptime(f"{date} {int(hour):02d}:00", "%Y-%m-%d %H:%M")
 
                 wx = self.get_historical_data(airport, dt)
 
@@ -219,10 +218,13 @@ class PirateWeatherFetcher:
                     wx["hour"] = hour
                     
                     records.append(wx)
+
+                log.info(f"Success: {airport} {date} {hour}")
+
              
             except Exception as e:
 
-                log.warning()
+                log.warning(f"Failed {airport} {date} {hour}: {e}")
 
 
         results_df = pd.DataFrame(records)
