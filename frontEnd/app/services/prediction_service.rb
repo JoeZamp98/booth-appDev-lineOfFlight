@@ -3,6 +3,9 @@ class PredictionService
 
   def self.base_uri
     ENV.fetch("FASTAPI_URL", "http://localhost:8000")
+    Rails.logger.info "FastAPI base URL: #{url}"
+    url
+  
   end
 
   def self.predict(
