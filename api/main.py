@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import predictions
+from routers import predictions, weather
 
 app = FastAPI(title="Line of Flight API")
 
@@ -12,6 +12,7 @@ app.add_middleware(
 )
 
 app.include_router(predictions.router)
+app.include_router(weather.router)
 
 @app.get("/health")
 def health():
