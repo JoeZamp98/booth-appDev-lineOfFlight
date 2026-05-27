@@ -21,8 +21,11 @@ class WeatherService
     def self.current(airport)
       coords = AIRPORTS[airport]
       return fallback(airport) unless coords
-      return fallback(airport) unless api_key.present?  # add this
-  
+
+      key = api_key
+      Rails.logger.info "Weather API key present: #{key.present?}, value: #{key.inspect}"
+      return fallback(airport) if key.nil? || key.empty?
+
       api_key  = Rails.application.credentials.pirate_weather[:api_key]
       lat, lon = coords[:lat], coords[:lon]
   
