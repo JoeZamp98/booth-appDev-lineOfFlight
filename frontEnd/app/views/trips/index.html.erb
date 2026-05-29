@@ -1,0 +1,95 @@
+<% content_for :title, "Trips" %>
+<% content_for :breadcrumb do %>
+  <span class="text-[#1a1a1a]">Your Trips</span>
+<% end %>
+
+<div class="max-w-2xl flex flex-col gap-5">
+
+  <div>
+    <h1 class="text-2xl font-light">Trip history</h1>
+    <p class="text-sm text-[#888] mt-0.5">
+      <%= @trips.count %> flights · <%= current_user.name %>
+    </p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-[#E0DCD5] overflow-hidden">
+    <table class="w-full border-collapse">
+
+      <thead>
+        <tr class="border-b border-[#F0ECE8]">
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest
+                     text-[#aaa] uppercase">Date</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest
+                     text-[#aaa] uppercase">Flight</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest
+                     text-[#aaa] uppercase">Route</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest
+                     text-[#aaa] uppercase">Result</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest
+                     text-[#aaa] uppercase">Predicted</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% @trips.each_with_index do |trip, i| %>
+          <%
+            row_bg = i.odd? ? "bg-[#FAFAF9]" : "bg-white"
+            delay_color = case trip.delay_class
+              when "early"  then "#4a8c5c"
+              when "late"   then "#c0392b"
+              else               "#888"
+            end
+            delay_label = case trip.delay_class
+              when "early"  then "#{trip.delay_min}m early"
+              when "late"   then "+#{trip.delay_min}m late"
+              else               "On time"
+            end
+          %>
+          <tr class="<%= row_bg %> border-b border-[#F0ECE8] last:border-0
+                     hover:bg-[#F5F2ED] transition-colors">
+
+            <td class="px-5 py-3 whitespace-nowrap">
+              <p class="text-sm text-[#888]"><%= trip.formatted_date %></p>
+            </td>
+
+            <td class="px-5 py-3 whitespace-nowrap">
+              <p class="text-sm font-semibold"><%= trip.flight %></p>
+            </td>
+
+            <td class="px-5 py-3 whitespace-nowrap">
+              <p class="text-sm font-medium">
+                <%= trip.origin %>
+                <span class="text-[#ccc] mx-1">→</span>
+                <%= trip.dest %>
+              </p>
+            </td>
+
+            <td class="px-5 py-3 whitespace-nowrap">
+              <span class="text-sm font-medium tabular-nums"
+                    style="color:<%= delay_color %>">
+                <%= delay_label %>
+              </span>
+            </td>
+
+            <td class="px-5 py-3 whitespace-nowrap">
+              <% if trip.predicted_prob %>
+                <span class="text-xs font-semibold tabular-nums px-2 py-0.5
+                             rounded border"
+                      style="color:<%= delay_color(trip.predicted_prob) %>;
+                             border-color:<%= delay_color(trip.predicted_prob) %>20;
+                             background:<%= delay_color(trip.predicted_prob) %>10">
+                  <%= fmt_pct(trip.predicted_prob) %>
+                </span>
+              <% else %>
+                <span class="text-xs text-[#ccc]">—</span>
+              <% end %>
+            </td>
+
+          </tr>
+        <% end %>
+      </tbody>
+
+    </table>
+  </div>
+
+</div>
