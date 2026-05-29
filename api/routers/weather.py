@@ -1,9 +1,16 @@
 import requests
+import time
 from fastapi import APIRouter
 from pydantic import BaseModel
 import os
 
 router = APIRouter(prefix="/weather", tags=["weather"])
+
+# In-memory cache so we hit Pirate Weather at most once per airport per TTL.
+# Keeps us well under the free-tier rate limit (429s) and lets us serve the
+# last good reading if the upstream is throttled or briefly unavailable.
+CACHE_TTL = 600  # seconds
+_cache = {}      # airport -> (fetched_at, payload)
 
 AIRPORTS = {
     "SFO": {"lat": 37.6213, "lon": -122.379},
@@ -46,6 +53,11 @@ def get_weather(airport: str):
     if not coords:
         return {**FALLBACK, "airport": airport}
 
+    # Serve a fresh cached reading if we have one.
+    cached = _cache.get(airport)
+    if cached and (time.time() - cached[0]) < CACHE_TTL:
+        return cached[1]
+
     api_key = os.environ.get("PIRATE_WEATHER_API_KEY")
     if not api_key:
         return {**FALLBACK, "airport": airport}
@@ -59,7 +71,7 @@ def get_weather(airport: str):
         resp.raise_for_status()
         data = resp.json().get("currently", {})
 
-        return {
+        result = {
             "airport":   airport,
             "temp_f":    round(data.get("temperature", 62)),
             "condition": data.get("summary", "Unknown"),
@@ -69,7 +81,12 @@ def get_weather(airport: str):
             "cloud":     float(data.get("cloudCover", 0)),
             "source":    "api"
         }
+        _cache[airport] = (time.time(), result)
+        return result
 
     except Exception as e:
         print(f"Weather fetch failed: {e}")
+        # Prefer the last good reading (even if stale) over a flat dummy.
+        if cached:
+            return cached[1]
         return {**FALLBACK, "airport": airport}
