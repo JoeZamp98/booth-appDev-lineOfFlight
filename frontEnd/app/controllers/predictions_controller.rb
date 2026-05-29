@@ -51,7 +51,7 @@ class PredictionsController < ApplicationController
         # the live feed, so leave them blank rather than inventing them.
         { dep_time: params[:dep_disp].presence }.compact.merge(api_prediction)
       else
-        DummyData.prediction_for(carrier, number)
+        DummyData.prediction_for(carrier, number, origin: origin, dest: dest)
       end
   end
 end

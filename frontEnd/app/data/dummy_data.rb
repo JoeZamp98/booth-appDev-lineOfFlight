@@ -69,8 +69,27 @@ module DummyData
       ROUTE_FLIGHTS["#{origin}-#{dest}"] || ROUTE_FLIGHTS["SFO-JFK"]
     end
 
-    def self.prediction_for(carrier, number)
-      PREDICTIONS["#{carrier}-#{number}"] || PREDICTIONS["DL-1221"]
+    def self.prediction_for(carrier, number, origin: nil, dest: nil)
+      key = "#{carrier}-#{number}"
+      return PREDICTIONS[key] if PREDICTIONS.key?(key)
+
+      # No hand-authored record for this flight. Synthesize one from the route
+      # schedule so each flight renders as itself instead of collapsing to the
+      # single demo prediction.
+      fl = (flights_for_route(origin, dest) || []).find { |f|
+        f[:flight].to_s.split(" ").last == number.to_s
+      }
+      prob = (fl && fl[:delay_prob]) || 0.30
+
+      {
+        flight:       "#{carrier} #{number}",
+        carrier:      carrier,
+        origin:       origin,
+        dest:         dest,
+        delay_prob:   prob,
+        likely_delay: [(prob * 60).round, 5].max,
+        drivers:      [],
+      }.merge(flight_details(carrier, number, origin, dest))
     end
 
     # Display-only details (times, equipment, seat) that the model endpoint

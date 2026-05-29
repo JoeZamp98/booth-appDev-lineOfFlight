@@ -219,3 +219,8 @@ __marimo__/
 
 *.csv
 analysis/data/FlightRecords_*.csv
+
+# Keep the small model stat tables the deployed API needs at runtime
+!api/model/route_stats.csv
+!api/model/carrier_route_stats.csv
+!api/model/hour_stats.csv

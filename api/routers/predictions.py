@@ -99,29 +99,35 @@ def build_features(req: FlightRequest, encoders, features,
 
     dep_hour = req.dep_hour if req.dep_hour is not None else 12
 
-    # Look up route stats
-    route_row = route_stats[
-        (route_stats["ORIGIN"] == req.origin) &
-        (route_stats["DEST"]   == req.dest)
-    ]
-    route_ontime  = float(route_row["route_ontime_rate"].iloc[0]) \
-                    if len(route_row) else 0.75
-    route_med_del = float(route_row["route_median_delay"].iloc[0]) \
-                    if len(route_row) else 10.0
+    # Look up route stats — fall back to neutral defaults when the historical
+    # stats tables aren't shipped, so the model can still score the flight.
+    route_ontime, route_med_del = 0.75, 10.0
+    if route_stats is not None:
+        route_row = route_stats[
+            (route_stats["ORIGIN"] == req.origin) &
+            (route_stats["DEST"]   == req.dest)
+        ]
+        if len(route_row):
+            route_ontime  = float(route_row["route_ontime_rate"].iloc[0])
+            route_med_del = float(route_row["route_median_delay"].iloc[0])
 
     # Look up carrier route stats
-    cr_row = carrier_route_stats[
-        (carrier_route_stats["MKT_CARRIER"] == req.carrier) &
-        (carrier_route_stats["ORIGIN"]      == req.origin) &
-        (carrier_route_stats["DEST"]        == req.dest)
-    ]
-    carrier_route_ontime = float(cr_row["carrier_route_ontime_rate"].iloc[0]) \
-                           if len(cr_row) else 0.75
+    carrier_route_ontime = 0.75
+    if carrier_route_stats is not None:
+        cr_row = carrier_route_stats[
+            (carrier_route_stats["MKT_CARRIER"] == req.carrier) &
+            (carrier_route_stats["ORIGIN"]      == req.origin) &
+            (carrier_route_stats["DEST"]        == req.dest)
+        ]
+        if len(cr_row):
+            carrier_route_ontime = float(cr_row["carrier_route_ontime_rate"].iloc[0])
 
     # Look up hour stats
-    hr_row = hour_stats[hour_stats["DEP_HOUR"] == dep_hour]
-    hour_ontime = float(hr_row["hour_ontime_rate"].iloc[0]) \
-                  if len(hr_row) else 0.75
+    hour_ontime = 0.75
+    if hour_stats is not None:
+        hr_row = hour_stats[hour_stats["DEP_HOUR"] == dep_hour]
+        if len(hr_row):
+            hour_ontime = float(hr_row["hour_ontime_rate"].iloc[0])
 
     # Encode categoricals — unknown airports/carriers get index 0
     def safe_encode(encoder_list, value):
@@ -293,20 +299,25 @@ def predict(req: FlightRequest):
     delay_prob = float(model.predict_proba(X)[0][1])
     likely_delay = max(5, round(delay_prob * 60))
 
-    # Look up stats for drivers
-    route_row = route_stats[
-        (route_stats["ORIGIN"] == req.origin) &
-        (route_stats["DEST"]   == req.dest)
-    ]
-    route_ontime         = float(route_row["route_ontime_rate"].iloc[0]) \
-                           if len(route_row) else 0.75
-    cr_row = carrier_route_stats[
-        (carrier_route_stats["MKT_CARRIER"] == req.carrier) &
-        (carrier_route_stats["ORIGIN"]      == req.origin) &
-        (carrier_route_stats["DEST"]        == req.dest)
-    ]
-    carrier_route_ontime = float(cr_row["carrier_route_ontime_rate"].iloc[0]) \
-                           if len(cr_row) else 0.75
+    # Look up stats for drivers (same neutral defaults when tables are absent)
+    route_ontime = 0.75
+    if route_stats is not None:
+        route_row = route_stats[
+            (route_stats["ORIGIN"] == req.origin) &
+            (route_stats["DEST"]   == req.dest)
+        ]
+        if len(route_row):
+            route_ontime = float(route_row["route_ontime_rate"].iloc[0])
+
+    carrier_route_ontime = 0.75
+    if carrier_route_stats is not None:
+        cr_row = carrier_route_stats[
+            (carrier_route_stats["MKT_CARRIER"] == req.carrier) &
+            (carrier_route_stats["ORIGIN"]      == req.origin) &
+            (carrier_route_stats["DEST"]        == req.dest)
+        ]
+        if len(cr_row):
+            carrier_route_ontime = float(cr_row["carrier_route_ontime_rate"].iloc[0])
 
     drivers = build_drivers(
         req, delay_prob,
