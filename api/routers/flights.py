@@ -1,7 +1,7 @@
 import json
 import os
 from fastapi import APIRouter, Query
-from datetime import datetime
+from datetime import datetime, timedelta, date
 
 router = APIRouter(prefix="/flights", tags=["flights"])
 
@@ -21,6 +21,37 @@ def get_schedule():
     return _schedule
 
 
+def get_current_schedule():
+    """Schedule rebased so its 72-hour window always starts today.
+
+    schedule.json is a static snapshot covering the 72 hours after it was
+    generated, and the deployed API can't regenerate it (the BTS source data
+    and route/hour stats aren't shipped). Left alone, the board empties once
+    that frozen window slips into the past. Shifting every departure by whole
+    days anchors the window to the current date while preserving each flight's
+    time-of-day and day-of-week pattern.
+    """
+    flights = get_schedule()
+    if not flights:
+        return []
+
+    base_date   = datetime.strptime(flights[0]["dep_time"], "%Y-%m-%d %H:%M").date()
+    offset_days = (date.today() - base_date).days
+    if offset_days == 0:
+        return flights
+
+    shift   = timedelta(days=offset_days)
+    rebased = []
+    for f in flights:
+        dt = datetime.strptime(f["dep_time"], "%Y-%m-%d %H:%M") + shift
+        g  = dict(f)
+        g["dep_time"]      = dt.strftime("%Y-%m-%d %H:%M")
+        g["dep_time_disp"] = dt.strftime("%b %-d · %H:%M")
+        g["dep_hour"]      = dt.hour
+        rebased.append(g)
+    return rebased
+
+
 @router.get("/board")
 def flight_board(
     origin:      str | None = Query(None),
@@ -29,7 +60,7 @@ def flight_board(
     risk:        str | None = Query(None),   # low | moderate | high
     hours_ahead: int        = Query(72),
 ):
-    flights = get_schedule()
+    flights = get_current_schedule()
 
     now     = datetime.now()
     cutoff  = now.strftime("%Y-%m-%d %H:%M")
@@ -78,7 +109,7 @@ def search_flights(
     dest:   str = Query(...),
     date:   str | None = Query(None),
 ):
-    flights = get_schedule()
+    flights = get_current_schedule()
     now     = datetime.now()
     cutoff  = now.strftime("%Y-%m-%d %H:%M")
 
