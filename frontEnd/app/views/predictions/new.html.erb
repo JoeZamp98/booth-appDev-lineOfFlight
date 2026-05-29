@@ -78,52 +78,68 @@
     </div>
 
     <div>
-    <label class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1 block">
-      Date of Flight
-    </label>
-    <div class="border border-[#E0DCD5] rounded-lg px-4 py-3 bg-white">
-      <span class="text-base font-medium"><%= Date.today.strftime("%-B %-d") %></span>
-      <span class="text-sm text-[#888]"><%= Date.today.strftime("· %Y · %A") %></span>
-    </div>
+      <label class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1 block">
+        Date of Flight
+      </label>
+      <%= f.date_field :date,
+        value: (params[:date] || Date.today).to_s,
+        min:   Date.today.to_s,
+        max:   (Date.today + 3).to_s,
+        class: "w-full border border-[#E0DCD5] rounded-lg px-4 py-3 bg-white
+                text-base font-medium text-[#1a1a1a]
+                focus:outline-none focus:border-[#1a1a1a] transition-colors
+                cursor-pointer" %>
     </div>
 
     <%= f.submit "Search flights",
         class: "w-full bg-[#1a1a1a] text-white text-sm font-medium
                 py-3 rounded-lg hover:bg-[#333] transition-colors
                 cursor-pointer mt-1" %>
-
     <% end %>
-
 
     <%# Flight list %>
     <div>
       <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-2">
         Select your flight — <%= @flights.size %> options
       </p>
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col gap-2 overflow-y-scroll pr-1 min-h-0 border-radius-lg" style="max-height: 200px;">
         <% @flights.each do |fl| %>
-          <%
-            prob  = fl[:delay_prob]
-            color = delay_color(prob)
-          %>
-          <%= link_to prediction_path("#{fl[:carrier]}-#{fl[:flight].split(' ').last}"),
-                class: "flex items-center gap-3 px-4 py-3 rounded-lg border
-                        border-[#E0DCD5] bg-white hover:border-[#aaa] transition-all" do %>
-
-            <span class="text-sm font-medium w-14 tabular-nums shrink-0"><%= fl[:dep] %></span>
-            <span class="text-sm text-[#555] flex-1">
-              <%= DummyData::AIRLINES[fl[:carrier]] %> <%= fl[:flight].split(' ').last %>
-            </span>
-            <span class="text-xs text-[#aaa]"><%= fl[:aircraft] %></span>
-            <span class="text-xs font-semibold tabular-nums px-2 py-0.5 rounded border"
-                  style="color:<%= color %>; border-color:<%= color %>20; background:<%= color %>10">
-              <%= fmt_pct(prob) %>
-            </span>
-            <span class="text-xs text-[#aaa]">select →</span>
-
+        <%
+          prob  = fl[:delay_prob].to_f
+          color = delay_color(prob)
+      
+          # Handle both API schedule format and dummy data format
+          dep_display = fl[:dep_time_disp] || fl[:dep]
+          aircraft    = fl[:aircraft] || ""
+          carrier     = fl[:carrier]
+          fl_num      = fl[:flight].to_s.split(" ").last
+        %>
+        <%= link_to prediction_path("#{carrier}-#{fl_num}",
+              origin: @origin, dest: @dest),
+              class: "flex items-center gap-3 px-4 py-3 rounded-lg border
+                      border-[#E0DCD5] bg-white hover:border-[#aaa] transition-all" do %>
+      
+          <span class="text-sm font-medium w-20 tabular-nums shrink-0">
+            <%= dep_display %>
+          </span>
+          <span class="text-sm text-[#555] flex-1">
+            <%= DummyData::AIRLINES[carrier] || carrier %>
+            <%= fl_num %>
+          </span>
+          <% if aircraft.present? %>
+            <span class="text-xs text-[#aaa]"><%= aircraft %></span>
           <% end %>
+          <span class="text-xs font-semibold tabular-nums px-2 py-0.5 rounded border"
+                style="color:<%= color %>;
+                       border-color:<%= color %>20;
+                       background:<%= color %>10">
+            <%= fmt_pct(prob) %>
+          </span>
+          <span class="text-xs text-[#aaa]">select →</span>
+      
         <% end %>
-      </div>
+      <% end %>
+    </div>
     </div>
 
   </div>
@@ -199,8 +215,12 @@
       <div class="grid grid-cols-4 gap-3">
         <% @recent_trips.each do |trip| %>
           <div class="rounded-lg border border-[#E0DCD5] p-3">
-            <p class="text-xs text-[#888] mb-1"><%= trip[:date] %></p>
-            <p class="text-sm font-semibold"><%= trip[:origin] %> → <%= trip[:dest] %></p>
+            <p><%= trip.formatted_date %></p>
+            <p><%= trip.origin %> → <%= trip.dest %></p>
+            <p style="color:<%= trip.delay_class == 'early' ? '#4a8c5c' :
+                                trip.delay_class == 'late'  ? '#c0392b' : '#888' %>">
+              <%= trip.delay_min >= 0 ? "+#{trip.delay_min}m" : "#{trip.delay_min}m" %>
+            </p>
             <p class="text-xs mt-1 font-medium"
                style="color:<%= trip[:delay_class] == 'early' ? '#4a8c5c' :
                                trip[:delay_class] == 'late'  ? '#c0392b' : '#888' %>">

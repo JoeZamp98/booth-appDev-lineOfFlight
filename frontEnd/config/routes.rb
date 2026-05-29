@@ -3,11 +3,14 @@ Rails.application.routes.draw do
 
   root "predictions#new"
 
+  get    "/login",  to: "sessions#new",     as: :login
+  post   "/login",  to: "sessions#create"
+  delete "/logout", to: "sessions#destroy", as: :logout
+
   get "/predict",      to: "predictions#new",  as: :new_prediction # this is the search page that allows someone to query a flight
   get "/predict/:id",  to: "predictions#show", as: :prediction #This is the full prediction detail page
 
   get "/trips",        to: "trips#index",      as: :trips #This is a log of all of the users past flights (hardcoded for now as a demo)
-  get "/watchlist",    to: "watchlist#index",  as: :watchlist #List of all the flights the user wants to monitor (hardcoded for now)
-  #get "/patterns",     to: "patterns#index",   as: :patterns #This would serve as a historical pattern explorer; not implemented just yet but considering
+  get "/flights",      to: "flights#index",    as: :flights #This is the flight board page that shows the upcoming 72 hour schedule
 
 end

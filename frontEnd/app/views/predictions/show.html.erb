@@ -1,83 +1,119 @@
 <% p = @prediction %>
+<%
+  prob = p[:delay_prob].to_f
+
+  status_label, status_color =
+    if    prob >= 0.5  then ["Delay likely",   "#c0392b"]
+    elsif prob >= 0.25 then ["Possible delay", "#c8902a"]
+    else                    ["On time",        "#4a8c5c"]
+    end
+
+  origin_name = DummyData::AIRPORTS.dig(p[:origin], :name)
+  dest_name   = DummyData::AIRPORTS.dig(p[:dest],   :name)
+
+  meta_parts = [
+    p[:aircraft].presence,
+    (p[:seat].present? ? "seat #{p[:seat]}" : nil),
+  ].compact
+%>
 <% content_for :title, "#{p[:flight]} · #{p[:origin]} → #{p[:dest]}" %>
 <% content_for :breadcrumb do %>
   <%= link_to "Predict", new_prediction_path, class: "hover:text-[#1a1a1a]" %>
   <span class="mx-1.5">›</span>
-  <%= link_to "Watchlist", watchlist_path, class: "hover:text-[#1a1a1a]" %>
-  <span class="mx-1.5">›</span>
-  <span class="text-[#1a1a1a]">
-    <%= p[:flight] %> · <%= p[:origin] %> → <%= p[:dest] %>
-  </span>
+  <span class="text-[#1a1a1a]"><%= p[:flight] %> · <%= p[:origin] %> → <%= p[:dest] %></span>
 <% end %>
 
 <div class="flex flex-col gap-5">
 
-  <%# ── Flight header ── %>
+  <%# ── Flight header (boarding-pass style) ── %>
   <div class="bg-white rounded-xl border border-[#E0DCD5] p-6">
-    <div class="flex items-start gap-10">
 
-      <div class="flex-1">
-        <p class="text-xs font-semibold tracking-widest text-[#c0392b] uppercase mb-2">
-          <%= DummyData::AIRLINES[p[:carrier]] %> · <%= p[:flight] %>
+    <% airline_brand = airline_color(p[:carrier]) %>
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="inline-flex items-center justify-center w-7 h-7 rounded-md text-white text-[11px] font-bold tracking-tight shrink-0"
+              style="background-color:<%= airline_brand %>">
+          <%= p[:carrier] %>
+        </span>
+        <p class="text-xs font-semibold tracking-widest uppercase truncate"
+           style="color:<%= airline_brand %>">
+          <%= DummyData::AIRLINES[p[:carrier]] || p[:carrier] %> · <%= p[:flight] %>
         </p>
-        <div class="flex items-center gap-3">
-          <span class="text-5xl font-light tracking-tight"><%= p[:origin] %></span>
-          <span class="text-2xl text-[#ccc]">→</span>
-          <span class="text-5xl font-light tracking-tight"><%= p[:dest] %></span>
+      </div>
+      <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap"
+            style="color:<%= status_color %>; background:<%= status_color %>14; border:1px solid <%= status_color %>33">
+        <span class="w-1.5 h-1.5 rounded-full" style="background:<%= status_color %>"></span>
+        <%= status_label %>
+      </span>
+    </div>
+
+    <%# Itinerary %>
+    <div class="mt-6 flex items-stretch gap-4 sm:gap-8">
+
+      <%# Origin %>
+      <div class="shrink-0">
+        <p class="text-4xl sm:text-5xl font-light tracking-tight leading-none"><%= p[:origin] %></p>
+        <% if origin_name.present? %>
+          <p class="text-xs text-[#888] mt-2"><%= origin_name %></p>
+        <% end %>
+        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mt-3 mb-0.5">Depart</p>
+        <p class="text-lg font-light tabular-nums"><%= p[:dep_time].presence || "—" %></p>
+      </div>
+
+      <%# Connector %>
+      <div class="flex-1 flex flex-col justify-center min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="h-px flex-1" style="border-top:1px dashed #D8D2C8"></span>
+          <span class="text-[#c8902a] text-base leading-none select-none">✈</span>
+          <span class="h-px flex-1" style="border-top:1px dashed #D8D2C8"></span>
         </div>
-        <p class="text-sm text-[#888] mt-1">
-          <%= p[:aircraft] %> · seat <%= p[:seat] %> · <%= p[:duration] rescue "5h 32m scheduled" %>
-        </p>
       </div>
 
-      <div class="text-center">
-        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">Depart</p>
-        <p class="text-2xl font-light tabular-nums"><%= p[:dep_time] %></p>
-      </div>
-
-      <div class="text-center">
-        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">Arrive</p>
-        <p class="text-2xl font-light tabular-nums">
-          <%= p[:arr_time] %>
-          <% if p[:arr_plus_day] %>
-            <sup class="text-sm text-[#888]">+1</sup>
-          <% end %>
-        </p>
-      </div>
-
-      <div class="text-center">
-        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">Status</p>
-        <p class="text-2xl font-light text-[#4a8c5c]">
-          <span class="inline-block w-2 h-2 rounded-full bg-current mr-1 mb-0.5"></span>
-          <%= p[:status] %>
+      <%# Dest %>
+      <div class="shrink-0 text-right">
+        <p class="text-4xl sm:text-5xl font-light tracking-tight leading-none"><%= p[:dest] %></p>
+        <% if dest_name.present? %>
+          <p class="text-xs text-[#888] mt-2"><%= dest_name %></p>
+        <% end %>
+        <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mt-3 mb-0.5">Arrive</p>
+        <p class="text-lg font-light tabular-nums">
+          <%= p[:arr_time].presence || "—" %><% if p[:arr_plus_day] %><sup class="text-xs text-[#888] ml-0.5">+1</sup><% end %>
         </p>
       </div>
 
     </div>
+
+    <% if meta_parts.any? %>
+      <p class="text-sm text-[#888] mt-6 pt-4 border-t border-[#F0ECE8]">
+        <%= meta_parts.join(" · ") %>
+      </p>
+    <% end %>
   </div>
 
   <%# ── Prediction + Drivers ── %>
-  <div class="grid grid-cols-2 gap-5">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
     <%# Prediction card %>
     <div class="bg-white rounded-xl border border-[#E0DCD5] p-6">
       <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">
         Our Prediction
       </p>
-      <h2 class="text-xl font-light mb-5">Delays possible</h2>
+      <h2 class="text-xl font-light mb-5">
+        <%= prob >= 0.25 ? "Delays possible" : "Likely on time" %>
+      </h2>
 
       <div class="flex items-center gap-6">
 
-        <%# Gauge — React will mount here, SVG is the fallback %>
-        <div id="delay-gauge" 
+        <%# Gauge — React mounts here %>
+        <div id="delay-gauge"
           data-prob="<%= p[:delay_prob] %>"
           class="w-40 h-24 shrink-0">
         </div>
 
         <div>
           <p class="text-3xl font-light leading-snug">
-            <span style="color:<%= delay_color(p[:delay_prob]) %>" class="font-normal">
-              <%= fmt_pct(p[:delay_prob]) %>
+            <span style="color:<%= delay_color(prob) %>" class="font-normal">
+              <%= fmt_pct(prob) %>
             </span>
             chance of a<br>30+ min delay
           </p>
@@ -90,40 +126,46 @@
     </div>
 
     <%# Delay drivers %>
-    <div class="bg-white rounded-xl border border-[#E0DCD5] p-6">
+    <div class="bg-white rounded-xl border border-[#E0DCD5] p-6 flex flex-col">
       <p class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1">
         Delay Drivers
       </p>
       <h2 class="text-xl font-light mb-4">What's pushing this up</h2>
 
-      <div class="flex flex-col gap-4">
-        <% p[:drivers].each do |d| %>
-          <%
-            bar_color = case d[:severity]
-              when "high"     then "#c0392b"
-              when "medium"   then "#c8902a"
-              when "positive" then "#4a8c5c"
-              else                "#888"
-            end
-          %>
-          <div class="flex gap-3">
-            <div class="w-1 rounded-full shrink-0"
-                 style="background:<%= bar_color %>; min-height:36px"></div>
-            <div class="flex-1">
-              <div class="flex items-baseline justify-between">
-                <p class="text-sm font-medium"><%= d[:label] %></p>
-                <p class="text-sm font-semibold tabular-nums ml-2"
-                   style="color:<%= bar_color %>"><%= d[:delta] %></p>
-              </div>
-              <p class="text-xs text-[#888] leading-relaxed mt-0.5"><%= d[:detail] %></p>
-            </div>
-          </div>
-
-          <p class="text-xs text-[#aaa] fixed bottom-4 right-4">
-            source: <%= @source %>
+      <div class="flex flex-col gap-4 flex-1">
+        <% if p[:drivers].blank? %>
+          <p class="text-sm text-[#888] leading-relaxed">
+            No significant delay drivers detected — this flight looks clear.
           </p>
+        <% else %>
+          <% p[:drivers].each do |d| %>
+            <%
+              bar_color = case d[:severity].to_s
+                when "high"     then "#c0392b"
+                when "medium"   then "#c8902a"
+                when "positive" then "#4a8c5c"
+                else                 "#888"
+              end
+            %>
+            <div class="flex gap-3">
+              <div class="w-1 rounded-full shrink-0"
+                   style="background:<%= bar_color %>; min-height:36px"></div>
+              <div class="flex-1">
+                <div class="flex items-baseline justify-between gap-2">
+                  <p class="text-sm font-medium"><%= d[:label] %></p>
+                  <p class="text-sm font-semibold tabular-nums shrink-0"
+                     style="color:<%= bar_color %>"><%= d[:delta] %></p>
+                </div>
+                <p class="text-xs text-[#888] leading-relaxed mt-0.5"><%= d[:detail] %></p>
+              </div>
+            </div>
+          <% end %>
         <% end %>
       </div>
+
+      <p class="text-xs text-[#aaa] mt-5 pt-3 border-t border-[#F0ECE8]">
+        source: <%= @source %><% if p[:model_used] == false %> · heuristic fallback<% end %>
+      </p>
     </div>
 
   </div>

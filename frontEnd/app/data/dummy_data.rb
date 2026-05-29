@@ -58,11 +58,37 @@ module DummyData
       { date: "Feb 19", origin: "LHR", dest: "SFO", delay_min: -12, delay_class: "early" },
     ].freeze
   
+    AIRCRAFT_NAMES = {
+      "B739" => "Boeing 737-900",
+      "A321" => "Airbus A321",
+      "77W"  => "Boeing 777-300ER",
+      "A339" => "Airbus A330-900neo",
+    }.freeze
+
     def self.flights_for_route(origin, dest)
       ROUTE_FLIGHTS["#{origin}-#{dest}"] || ROUTE_FLIGHTS["SFO-JFK"]
     end
-  
+
     def self.prediction_for(carrier, number)
       PREDICTIONS["#{carrier}-#{number}"] || PREDICTIONS["DL-1221"]
+    end
+
+    # Display-only details (times, equipment, seat) that the model endpoint
+    # does not return. Looked up from the known route schedule so the
+    # prediction page can render a complete itinerary.
+    def self.flight_details(carrier, number, origin, dest)
+      flights = flights_for_route(origin, dest) || []
+      fl = flights.find { |f| f[:flight].to_s.split(" ").last == number.to_s }
+      return {} unless fl
+
+      dep = fl[:dep]
+      arr = fl[:arr]
+      {
+        dep_time:     dep,
+        arr_time:     arr,
+        arr_plus_day: (dep && arr) ? (arr < dep) : false,
+        aircraft:     AIRCRAFT_NAMES[fl[:aircraft]] || fl[:aircraft],
+        seat:         fl[:seat],
+      }.compact
     end
   end

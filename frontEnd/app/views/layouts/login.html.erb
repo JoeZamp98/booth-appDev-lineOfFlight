@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in · Line of Flight</title>
+  <%= csrf_meta_tags %>
+  <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+  <%= vite_javascript_tag "application.jsx" %>
+</head>
+<body class="bg-[#F5F2ED] min-h-screen flex items-center justify-center">
+  <%= yield %>
+</body>
+</html>

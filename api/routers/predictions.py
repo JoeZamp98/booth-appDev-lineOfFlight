@@ -87,7 +87,6 @@ class PredictionResponse(BaseModel):
     drivers: list[DelayDriver]
     model_used: bool
 
-
 # ── Feature builder ────────────────────────────────────────────────────
 
 def build_features(req: FlightRequest, encoders, features,

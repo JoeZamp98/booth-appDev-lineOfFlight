@@ -64,4 +64,23 @@ class PredictionService
     Rails.logger.error "PredictionService error: #{e.message}"
     nil
   end
+
+  def self.search_flights(origin:, dest:, date: nil)
+    response = HTTParty.get(
+      "#{self.base_url}/flights/search",
+      query:   { origin: origin, dest: dest, date: date }.compact,
+      timeout: 10
+    )
+  
+    if response.success?
+      response.parsed_response["flights"].map(&:deep_symbolize_keys)
+    else
+      nil
+    end
+  
+  rescue => e
+    Rails.logger.error "PredictionService search error: #{e.message}"
+    nil
+  end
+  
 end

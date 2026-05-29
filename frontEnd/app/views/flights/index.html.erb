@@ -1,0 +1,178 @@
+<% content_for :title, "Flights" %>
+<% content_for :breadcrumb do %>
+  <span class="text-[#1a1a1a]">Active Flights · Next 72 Hours</span>
+<% end %>
+
+<div class="flex flex-col gap-5">
+
+  <%# ── Header + filters ── %>
+  <div class="flex items-end justify-between">
+    <div>
+      <h1 class="text-2xl font-light">Flight board</h1>
+      <p class="text-sm text-[#888] mt-0.5">
+        <%= @flight_count %> flights · next 72 hours
+      </p>
+    </div>
+
+    <%= form_with url: flights_path, method: :get,
+          data: { turbo: false },
+          class: "flex items-end gap-3" do |f| %>
+
+      <div>
+        <label class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1 block">
+          Origin
+        </label>
+        <%= f.select :origin,
+              [["All origins", ""]] + DummyData::AIRPORTS.keys.map { |c| [c, c] },
+              { selected: @origin || "" },
+              class: "border border-[#E0DCD5] rounded-lg px-3 py-2 bg-white
+                      text-sm focus:outline-none focus:border-[#1a1a1a] cursor-pointer" %>
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1 block">
+          Dest
+        </label>
+        <%= f.select :dest,
+              [["All destinations", ""]] + DummyData::AIRPORTS.keys.map { |c| [c, c] },
+              { selected: @dest || "" },
+              class: "border border-[#E0DCD5] rounded-lg px-3 py-2 bg-white
+                      text-sm focus:outline-none focus:border-[#1a1a1a] cursor-pointer" %>
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold tracking-widest text-[#aaa] uppercase mb-1 block">
+          Risk
+        </label>
+        <%= f.select :risk,
+              [["All risk levels", ""], ["Low", "low"],
+               ["Moderate", "moderate"], ["High", "high"]],
+              { selected: @risk || "" },
+              class: "border border-[#E0DCD5] rounded-lg px-3 py-2 bg-white
+                      text-sm focus:outline-none focus:border-[#1a1a1a] cursor-pointer" %>
+      </div>
+
+      <%= f.submit "Filter",
+            class: "bg-[#1a1a1a] text-white text-sm font-medium px-4 py-2
+                    rounded-lg hover:bg-[#333] transition-colors cursor-pointer" %>
+
+      <% if @origin.present? || @dest.present? || @risk.present? %>
+        <%= link_to "Clear", flights_path,
+              class: "text-sm text-[#888] hover:text-[#1a1a1a] py-2 transition-colors" %>
+      <% end %>
+
+    <% end %>
+  </div>
+
+  <%# ── Table ── %>
+  <div class="bg-white rounded-xl border border-[#E0DCD5] overflow-hidden">
+    <table class="w-full border-collapse">
+
+      <thead>
+        <tr class="border-b border-[#F0ECE8]">
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest text-[#aaa] uppercase whitespace-nowrap">Departure</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest text-[#aaa] uppercase whitespace-nowrap">Flight</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest text-[#aaa] uppercase whitespace-nowrap">Route</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest text-[#aaa] uppercase whitespace-nowrap">Carrier</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest text-[#aaa] uppercase whitespace-nowrap">Risk</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold tracking-widest text-[#aaa] uppercase whitespace-nowrap">Probability</th>
+          <th class="px-5 py-3"></th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% if @flights.empty? %>
+          <tr>
+            <td colspan="7" class="px-5 py-12 text-center text-sm text-[#aaa]">
+              No flights found matching your filters.
+            </td>
+          </tr>
+        <% else %>
+          <% @flights.each_with_index do |fl, i| %>
+            <%
+              prob = fl[:delay_prob].to_f
+              color = delay_color(prob)
+              row_bg = i.odd? ? "bg-[#FAFAF9]" : "bg-white"
+
+              risk_label = prob >= 0.5 ? "High" : prob >= 0.25 ? "Moderate" : "Low"
+
+              risk_classes = if prob >= 0.5
+                "bg-[#fcecea] text-[#8b1a14] border border-[#e8b4b0]"
+              elsif prob >= 0.25
+                "bg-[#fdf3e3] text-[#8a5c00] border border-[#f0d090]"
+              else
+                "bg-[#e8f4ec] text-[#2d6a40] border border-[#b8dfc4]"
+              end
+            %>
+            <tr class="<%= row_bg %> hover:bg-[#F5F2ED] transition-colors
+                        border-b border-[#F0ECE8] last:border-0">
+
+              <%# Departure %>
+              <td class="px-5 py-3 whitespace-nowrap">
+                <p class="text-sm font-medium tabular-nums text-[#1a1a1a]">
+                  <%= fl[:dep_time_disp] %>
+                </p>
+              </td>
+
+              <%# Flight number %>
+              <td class="px-5 py-3 whitespace-nowrap">
+                <p class="text-sm font-semibold text-[#1a1a1a]"><%= fl[:flight] %></p>
+              </td>
+
+              <%# Route %>
+              <td class="px-5 py-3 whitespace-nowrap">
+                <p class="text-sm font-medium text-[#1a1a1a]">
+                  <%= fl[:origin] %>
+                  <span class="text-[#ccc] mx-1">→</span>
+                  <%= fl[:dest] %>
+                </p>
+              </td>
+
+              <%# Carrier %>
+              <td class="px-5 py-3">
+                <p class="text-sm text-[#666]">
+                  <%= DummyData::AIRLINES[fl[:carrier]] || fl[:carrier] %>
+                </p>
+              </td>
+
+              <%# Risk badge %>
+              <td class="px-5 py-3 whitespace-nowrap">
+                <span class="text-xs font-semibold px-2 py-0.5 rounded <%= risk_classes %>">
+                  <%= risk_label %>
+                </span>
+              </td>
+
+              <%# Probability bar + number %>
+              <td class="px-5 py-3 whitespace-nowrap">
+                <div class="flex items-center gap-2">
+                  <div class="w-16 h-1.5 bg-[#F0ECE8] rounded-full overflow-hidden shrink-0">
+                    <div class="h-full rounded-full transition-all"
+                         style="width:<%= (prob * 100).round %>%;
+                                background:<%= color %>">
+                    </div>
+                  </div>
+                  <span class="text-xs font-semibold tabular-nums w-8"
+                        style="color:<%= color %>">
+                    <%= fmt_pct(prob) %>
+                  </span>
+                </div>
+              </td>
+
+              <%# Predict link %>
+              <td class="px-5 py-3 text-right whitespace-nowrap">
+                <%= link_to "predict →",
+                      prediction_path(
+                        "#{fl[:carrier]}-#{fl[:flight].to_s.split(' ').last}"
+                      ),
+                      class: "text-xs text-[#aaa] hover:text-[#1a1a1a] transition-colors" %>
+              </td>
+
+            </tr>
+          <% end %>
+        <% end %>
+      </tbody>
+
+    </table>
+  </div>
+
+</div>

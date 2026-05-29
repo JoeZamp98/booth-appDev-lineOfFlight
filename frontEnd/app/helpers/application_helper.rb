@@ -13,6 +13,16 @@ module ApplicationHelper
       else "#4a8c5c"
       end
     end
+
+    # Brand accent color per carrier. Falls back to the app's red accent so
+    # carriers without a defined brand color keep the existing look.
+    AIRLINE_COLORS = {
+      "UA" => "#002C8C", # United blue
+    }.freeze
+
+    def airline_color(carrier)
+      AIRLINE_COLORS.fetch(carrier.to_s, "#c0392b")
+    end
   
     def fmt_pct(prob)
       "#{(prob * 100).round}%"

@@ -1,20 +1,18 @@
 class PredictionsController < ApplicationController
+
   def new
     @origin       = params[:origin]&.upcase || "SFO"
     @dest         = params[:dest]&.upcase   || "JFK"
-    @flights      = DummyData.flights_for_route(@origin, @dest)
-
-    Rails.logger.info "Fetching weather for #{@origin}..."
-    @weather = WeatherService.current(@origin)
-    Rails.logger.info "Weather source: #{@weather[:source]}"
-    
-    
-    @recent_trips = DummyData::RECENT_TRIPS
-
-    #Attempts to retrieve data from FastAPI service first, falls back to dummy data otherwise
-    api_flights = PredictionService.flights_for_route(origin: @origin, dest: @dest)
-    @flights = api_flights || DummyData.flights_for_route(@origin, @dest)
-    @source = api_flights ? "FastAPI" : "Dummy Data"
+    @date         = params[:date]           || Date.today.to_s
+    @recent_trips = current_user.trips.recent
+    @weather      = WeatherService.current(@origin)
+  
+    api_flights = PredictionService.search_flights(
+      origin: @origin,
+      dest:   @dest,
+      date:   @date
+    )
+    @flights = api_flights&.any? ? api_flights : DummyData.flights_for_route(@origin, @dest)
   end
 
   def show
@@ -38,7 +36,14 @@ class PredictionsController < ApplicationController
       dest_weather:   dest_wx
     )
   
-    @prediction = api_prediction || DummyData.prediction_for(carrier, number)
-    @source     = api_prediction ? :api : :dummy
+    @source = api_prediction ? :api : :dummy
+    @prediction =
+      if api_prediction
+        # The model endpoint omits itinerary fields (times, aircraft, seat);
+        # backfill them from the known schedule so the page renders complete.
+        DummyData.flight_details(carrier, number, origin, dest).merge(api_prediction)
+      else
+        DummyData.prediction_for(carrier, number)
+      end
   end
 end
