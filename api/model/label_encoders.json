@@ -1,1 +1,1 @@
-{"origin": ["ATL", "BOS", "DEN", "JFK", "LGA", "MIA", "ORD", "SFO"], "dest": ["ATL", "BOS", "DEN", "JFK", "LAX", "LGA", "MIA", "ORD", "SEA", "SFO"], "carrier": ["AA", "B6", "DL", "UA", "WN"]}
+{"origin": ["ATL", "BOS", "DEN", "JFK", "LAX", "LGA", "MIA", "ORD", "SEA", "SFO"], "dest": ["ATL", "BOS", "DEN", "JFK", "LAX", "LGA", "MIA", "ORD", "SEA", "SFO"], "carrier": ["AA", "B6", "DL", "UA", "WN"]}

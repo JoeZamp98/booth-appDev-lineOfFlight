@@ -65,6 +65,7 @@ class FlightRequest(BaseModel):
     dest: str
     date: str
     dep_hour: int | None = None
+    distance: float | None = None
     prev_arr_delay: float | None = None
     origin_weather: dict | None = None
     dest_weather: dict | None = None
@@ -146,7 +147,7 @@ def build_features(req: FlightRequest, encoders, features,
         "hour_ontime_rate":           hour_ontime,
         "route_median_delay":         route_med_del,
         "prev_arr_delay":             req.prev_arr_delay or 0.0,
-        "DISTANCE":                   0.0,   # unknown at inference time
+        "DISTANCE":                   float(req.distance) if req.distance is not None else 0.0,
         "origin_precip_prob":         ox.get("precip_prob", 0),
         "origin_wind_speed":          ox.get("wind_speed", 0),
         "origin_wind_gust":           ox.get("wind_gust", 0),
@@ -324,6 +325,29 @@ def predict(req: FlightRequest):
         "likely_delay": likely_delay,
         "drivers":      drivers,
         "model_used":   True
+    }
+
+
+@router.get("/route_stats")
+def route_stats(origin: str, dest: str):
+    """Historical on-time rate / median delay for a route, from route_stats.csv."""
+    _, _, _, rstats, _, _ = get_model()
+    if rstats is None:
+        return {"available": False}
+
+    row = rstats[
+        (rstats["ORIGIN"] == origin.upper()) &
+        (rstats["DEST"]   == dest.upper())
+    ]
+    if row.empty:
+        return {"available": False}
+
+    r = row.iloc[0]
+    return {
+        "available":    True,
+        "ontime_rate":  float(r["route_ontime_rate"]),
+        "median_delay": float(r["route_median_delay"]),
+        "flights":      int(r["route_flights"]),
     }
 
 

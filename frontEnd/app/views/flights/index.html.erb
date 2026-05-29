@@ -162,7 +162,13 @@
               <td class="px-5 py-3 text-right whitespace-nowrap">
                 <%= link_to "predict →",
                       prediction_path(
-                        "#{fl[:carrier]}-#{fl[:flight].to_s.split(' ').last}"
+                        "#{fl[:carrier]}-#{fl[:flight].to_s.split(' ').last}",
+                        origin:   fl[:origin],
+                        dest:     fl[:dest],
+                        dep_hour: fl[:dep_hour],
+                        dep_disp: fl[:dep_time_disp],
+                        date:     fl[:dep_time].to_s.split(' ').first,
+                        distance: fl[:distance]
                       ),
                       class: "text-xs text-[#aaa] hover:text-[#1a1a1a] transition-colors" %>
               </td>

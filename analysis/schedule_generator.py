@@ -24,7 +24,8 @@ from pathlib import Path
 TARGET_AIRPORTS = ["SFO", "JFK", "ORD", "LAX", "ATL", "BOS", "DEN", "SEA"]
 TARGET_CARRIERS = ["DL", "UA", "AA", "B6", "WN", "AS"]
 FLIGHTS_PER_HOUR_WINDOW = 3   # how many flights to sample per origin/hour bucket
-API_DIR = Path("../api")
+MODEL_DIR   = Path("../api/model")        # where the trained model + stats live
+OUTPUT_PATH = Path("../api/schedule.json") # where the API actually reads the schedule
 
 # ── Load BTS data ─────────────────────────────────────────────────────
 
@@ -60,21 +61,21 @@ def load_bts(data_dir="./data"):
 # ── Load model artifacts ──────────────────────────────────────────────
 
 def load_model():
-    model_path = API_DIR / "delay_model.pkl"
+    model_path = MODEL_DIR / "delay_model.pkl"
     if not model_path.exists():
         print("WARNING: No model found — using random probabilities")
         return None, None, None, None, None, None
 
     with open(model_path, "rb") as f:
         model = pickle.load(f)
-    with open(API_DIR / "label_encoders.json") as f:
+    with open(MODEL_DIR / "label_encoders.json") as f:
         encoders = json.load(f)
-    with open(API_DIR / "feature_list.json") as f:
+    with open(MODEL_DIR / "feature_list.json") as f:
         features = json.load(f)
 
-    route_stats        = pd.read_csv(API_DIR / "route_stats.csv")
-    carrier_route_stats = pd.read_csv(API_DIR / "carrier_route_stats.csv")
-    hour_stats         = pd.read_csv(API_DIR / "hour_stats.csv")
+    route_stats        = pd.read_csv(MODEL_DIR / "route_stats.csv")
+    carrier_route_stats = pd.read_csv(MODEL_DIR / "carrier_route_stats.csv")
+    hour_stats         = pd.read_csv(MODEL_DIR / "hour_stats.csv")
 
     return model, encoders, features, route_stats, carrier_route_stats, hour_stats
 
@@ -192,19 +193,19 @@ def generate_schedule(df, model, encoders, features,
             if dep_dt < now or dep_dt > end_time:
                 continue
 
-            # Get delay probability
-            if model is not None:
-                try:
-                    fv    = build_feature_vector(
-                                row, dep_dt, encoders, features,
-                                route_stats, carrier_route_stats, hour_stats)
-                    prob  = float(model.predict_proba(
-                                np.array(fv).reshape(1, -1))[0][1])
-                except Exception as e:
-                    print(f"Prediction failed: {e}")
-                    prob = 0.25
-            else:
-                prob = round(np.random.uniform(0.1, 0.7), 2)
+            # Score with the model — the single source of truth for delay
+            # probabilities. Flights we can't score are skipped rather than
+            # given a fake number, so the board never shows random data.
+            try:
+                fv   = build_feature_vector(
+                            row, dep_dt, encoders, features,
+                            route_stats, carrier_route_stats, hour_stats)
+                prob = float(model.predict_proba(
+                            np.array(fv).reshape(1, -1))[0][1])
+            except Exception as e:
+                print(f"Skipping {row['MKT_CARRIER']} "
+                      f"{row['ORIGIN']}->{row['DEST']}: {e}")
+                continue
 
             # Build flight number from carrier + random realistic number
             fl_num = f"{row['MKT_CARRIER']} {int(row.get('OP_CARRIER_FL_NUM', np.random.randint(100,9999)))}" \
@@ -251,6 +252,12 @@ if __name__ == "__main__":
 
     print("Loading model...")
     model, encoders, features, route_stats, carrier_route_stats, hour_stats = load_model()
+    if model is None:
+        sys.exit(
+            f"ERROR: no model at {MODEL_DIR / 'delay_model.pkl'}. Refusing to "
+            "generate a schedule with random probabilities — the board and the "
+            "prediction page must share the same model. Train/copy the model first."
+        )
 
     print("Generating schedule...")
     schedule = generate_schedule(
@@ -258,7 +265,7 @@ if __name__ == "__main__":
         route_stats, carrier_route_stats, hour_stats
     )
 
-    output_path = API_DIR / "schedule.json"
+    output_path = OUTPUT_PATH
     with open(output_path, "w") as f:
         json.dump({
             "generated_at":   datetime.now().isoformat(),

@@ -48,14 +48,54 @@
           <%= nav_link "Flights", flights_path %>
         </nav>
 
-        <%# User badge %>
-        <div class="ml-auto flex items-center gap-3">
-          <span class="text-sm text-[#888]">Daniel · Diamond Medallion</span>
-          <div class="w-8 h-8 rounded-full bg-[#1a1a1a] text-white text-xs font-semibold
-                      flex items-center justify-center">
-            DP
-          </div>
-        </div>
+        <%# User menu %>
+        <% if current_user %>
+          <% user_initials = current_user.initials.presence ||
+                             current_user.name.to_s.split.map(&:first).first(2).join %>
+          <details class="ml-auto relative group [&_summary::-webkit-details-marker]:hidden">
+            <summary class="flex items-center gap-3 cursor-pointer list-none select-none">
+              <span class="text-right leading-tight hidden sm:block">
+                <span class="block text-sm font-medium"><%= current_user.name %></span>
+                <% if current_user.tier.present? %>
+                  <span class="block text-xs text-[#888]"><%= current_user.tier %></span>
+                <% end %>
+              </span>
+              <div class="w-8 h-8 rounded-full bg-[#1a1a1a] text-white text-xs font-semibold
+                          flex items-center justify-center ring-2 ring-transparent
+                          group-open:ring-[#1a1a1a]/15 transition-all">
+                <%= user_initials %>
+              </div>
+            </summary>
+
+            <div class="absolute right-0 mt-2 w-60 bg-white border border-[#E0DCD5]
+                        rounded-xl shadow-lg overflow-hidden z-50">
+              <div class="px-4 py-3 border-b border-[#F0ECE8]">
+                <p class="text-sm font-semibold"><%= current_user.name %></p>
+                <p class="text-xs text-[#888] mt-0.5">@<%= current_user.username %></p>
+                <div class="flex flex-wrap items-center text-align-center gap-1.5 mt-2">
+                  <% if current_user.tier.present? %>
+                    <span class="text-[10px] font-medium
+                                 px-4 py-4 rounded-full bg-[#1a1a1a] text-white">
+                      <%= current_user.tier %>
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+              <%= button_to logout_path, method: :delete,
+                    class: "w-full flex items-center gap-2 px-4 py-4 text-sm font-medium
+                            text-[#c0392b] hover:bg-[#FAF5F4] transition-colors cursor-pointer" do %>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="shrink-0">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
+                        stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="text-align-center my-6">
+                  Sign out
+                </div>
+              <% end %>
+            </div>
+          </details>
+        <% end %>
 
       </div>
     </header>
@@ -75,6 +115,22 @@
     <main class="max-w-7xl mx-auto px-6 py-8">
       <%= yield %>
     </main>
+
+    <%# Close the user menu when clicking outside or pressing Escape %>
+    <script>
+      document.addEventListener("click", function (e) {
+        document.querySelectorAll("details[open]").forEach(function (d) {
+          if (!d.contains(e.target)) d.removeAttribute("open");
+        });
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          document.querySelectorAll("details[open]").forEach(function (d) {
+            d.removeAttribute("open");
+          });
+        }
+      });
+    </script>
 
   </body>
 </html>

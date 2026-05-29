@@ -4,7 +4,7 @@ class PredictionService
   end
 
   def self.predict(carrier:, flight_number:, origin:, dest:, date:,
-    dep_hour: nil, origin_weather: nil, dest_weather: nil)
+    dep_hour: nil, distance: nil, origin_weather: nil, dest_weather: nil)
 
     response = HTTParty.post(
     "#{self.base_url}/predictions/predict",
@@ -16,6 +16,7 @@ class PredictionService
     dest:           dest,
     date:           date,
     dep_hour:       dep_hour,
+    distance:       distance,
     origin_weather: origin_weather ? {
     precip_prob:  origin_weather[:precip],
     wind_speed:   origin_weather[:wind].to_f,
@@ -62,6 +63,25 @@ class PredictionService
 
   rescue => e
     Rails.logger.error "PredictionService error: #{e.message}"
+    nil
+  end
+
+  def self.route_stats(origin:, dest:)
+    response = HTTParty.get(
+      "#{self.base_url}/predictions/route_stats",
+      query:   { origin: origin, dest: dest },
+      timeout: 10
+    )
+
+    if response.success?
+      data = response.parsed_response.deep_symbolize_keys
+      data[:available] ? data : nil
+    else
+      nil
+    end
+
+  rescue => e
+    Rails.logger.error "PredictionService route_stats error: #{e.message}"
     nil
   end
 

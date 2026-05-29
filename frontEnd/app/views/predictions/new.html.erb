@@ -113,9 +113,12 @@
           aircraft    = fl[:aircraft] || ""
           carrier     = fl[:carrier]
           fl_num      = fl[:flight].to_s.split(" ").last
+          flight_date = fl[:dep_time].to_s.split(" ").first  # "YYYY-MM-DD" from schedule
         %>
         <%= link_to prediction_path("#{carrier}-#{fl_num}",
-              origin: @origin, dest: @dest),
+              origin: @origin, dest: @dest,
+              dep_hour: fl[:dep_hour], dep_disp: dep_display,
+              date: flight_date.presence, distance: fl[:distance]),
               class: "flex items-center gap-3 px-4 py-3 rounded-lg border
                       border-[#E0DCD5] bg-white hover:border-[#aaa] transition-all" do %>
       
@@ -184,27 +187,41 @@
           data-dest="<%= @dest %>">
       </div>
 
-      <div class="grid grid-cols-4 gap-4 pt-4 border-t border-[#F0ECE8]">
-        <div>
-          <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">On-Time Rate</p>
-          <p class="text-2xl font-light">71%</p>
-          <p class="text-xs text-[#aaa]">last 30 days</p>
+      <%
+        wx_precip = (@weather[:precip] || 0).to_f
+        wx_level, wx_color =
+          if    wx_precip >= 0.5 then ["HIGH",     "#c0392b"]
+          elsif wx_precip >= 0.2 then ["MODERATE", "#c8902a"]
+          else                        ["LOW",      "#4a8c5c"]
+          end
+      %>
+      <% if @route_stats %>
+        <div class="grid grid-cols-4 gap-4 pt-4 border-t border-[#F0ECE8]">
+          <div>
+            <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">On-Time Rate</p>
+            <p class="text-2xl font-light"><%= (@route_stats[:ontime_rate] * 100).round %>%</p>
+            <p class="text-xs text-[#aaa]">5-yr history</p>
+          </div>
+          <div>
+            <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">Median Delay</p>
+            <p class="text-2xl font-light"><%= @route_stats[:median_delay].round %> min</p>
+          </div>
+          <div>
+            <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">Flights Analyzed</p>
+            <p class="text-2xl font-light"><%= number_with_delimiter(@route_stats[:flights]) %></p>
+            <p class="text-xs text-[#aaa]">sample size</p>
+          </div>
+          <div>
+            <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">Weather Watch</p>
+            <p class="text-2xl font-light" style="color:<%= wx_color %>"><%= wx_level %></p>
+            <p class="text-xs text-[#aaa]"><%= @origin %> conditions</p>
+          </div>
         </div>
-        <div>
-          <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">Median Delay</p>
-          <p class="text-2xl font-light">14 min</p>
+      <% else %>
+        <div class="pt-4 border-t border-[#F0ECE8]">
+          <p class="text-sm text-[#aaa]">No historical data for <%= @origin %> → <%= @dest %> yet.</p>
         </div>
-        <div>
-          <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">Cancel Rate</p>
-          <p class="text-2xl font-light">2.1%</p>
-          <p class="text-xs text-[#aaa]">below avg</p>
-        </div>
-        <div>
-          <p class="text-xs text-[#aaa] uppercase tracking-widest mb-0.5">Weather Watch</p>
-          <p class="text-2xl font-light text-[#4a8c5c]">LOW</p>
-          <p class="text-xs text-[#aaa]">ZNY airspace</p>
-        </div>
-      </div>
+      <% end %>
     </div>
 
     <%# Recent trips %>

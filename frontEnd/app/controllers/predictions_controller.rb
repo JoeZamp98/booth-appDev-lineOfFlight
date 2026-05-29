@@ -6,6 +6,7 @@ class PredictionsController < ApplicationController
     @date         = params[:date]           || Date.today.to_s
     @recent_trips = current_user.trips.recent
     @weather      = WeatherService.current(@origin)
+    @route_stats  = PredictionService.route_stats(origin: @origin, dest: @dest)
   
     api_flights = PredictionService.search_flights(
       origin: @origin,
@@ -18,6 +19,11 @@ class PredictionsController < ApplicationController
   def show
     carrier, number = params[:id].split("-")
     dep_hour = params[:dep_hour]&.to_i || 12
+    # Carry the flight's real date/distance from the schedule so the live
+    # prediction reproduces the cached schedule.json value — the only
+    # intended difference is live weather.
+    date     = params[:date].presence     || Date.today.to_s
+    distance = params[:distance].presence
   
     # Fetch weather for both airports
     origin     = params[:origin] || "SFO"
@@ -30,8 +36,9 @@ class PredictionsController < ApplicationController
       flight_number:  number,
       origin:         origin,
       dest:           dest,
-      date:           Date.today.to_s,
+      date:           date,
       dep_hour:       dep_hour,
+      distance:       distance,
       origin_weather: origin_wx,
       dest_weather:   dest_wx
     )
@@ -39,9 +46,10 @@ class PredictionsController < ApplicationController
     @source = api_prediction ? :api : :dummy
     @prediction =
       if api_prediction
-        # The model endpoint omits itinerary fields (times, aircraft, seat);
-        # backfill them from the known schedule so the page renders complete.
-        DummyData.flight_details(carrier, number, origin, dest).merge(api_prediction)
+        # The model endpoint returns only delay fields. Use the real departure
+        # time carried over from the schedule; arrival/aircraft/seat aren't in
+        # the live feed, so leave them blank rather than inventing them.
+        { dep_time: params[:dep_disp].presence }.compact.merge(api_prediction)
       else
         DummyData.prediction_for(carrier, number)
       end
